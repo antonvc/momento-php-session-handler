@@ -1,0 +1,5 @@
+{
+    "require": {
+        "momentohq/client-sdk-php": "^1.0"
+    }
+}

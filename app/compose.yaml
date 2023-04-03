@@ -1,0 +1,13 @@
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./php-fpm:/var/www/html
+  php_fpm:
+    build: ./php-fpm
+    volumes:
+      - ./php-fpm:/var/www/html
+    network_mode: service:nginx
+    
