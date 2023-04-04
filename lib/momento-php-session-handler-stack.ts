@@ -21,14 +21,14 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
       enableFargateCapacityProviders: true,
     });
 
-    const taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDef');
-
-    //use escape hatch to set runtime platform to fargate arm64
-    const cfnTaskDefinition = taskDefinition.node.defaultChild as ecs.CfnTaskDefinition;
-    cfnTaskDefinition.runtimePlatform = {
-      cpuArchitecture: 'ARM64',
-      operatingSystemFamily: 'LINUX'
-    };
+    const taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDef', {
+      //ensure we use ECS fargate with ARM64
+      runtimePlatform: {
+        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+        cpuArchitecture: ecs.CpuArchitecture.ARM64
+      },
+      
+    });
 
     const nginxContainer = taskDefinition.addContainer('Nginx', {
       image: ecs.ContainerImage.fromDockerImageAsset(new DockerImageAsset(this, 'nginx', {
@@ -43,7 +43,7 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
           hostPort: 80,
           protocol: ecs.Protocol.TCP
         }
-      ],
+      ]
     });
 
     const phpFpmContainer = taskDefinition.addContainer('PhpFpm', {
@@ -57,7 +57,11 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
         //retrieve momento API key from the current environment
         'MOMENTO_AUTH_TOKEN': env.MOMENTO_AUTH_TOKEN??'',
         'MONENTO_SESSION_CACHE': env.MONENTO_SESSION_CACHE??'php-sessions',
-      }
+        'MOMENTO_SESSION_TTL': '300',
+      },
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'momento-php-fpm',
+      }),
     });
 
     // Create a load-balanced Fargate spot service and make it public

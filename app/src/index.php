@@ -11,15 +11,24 @@ session_start();
 // Handle form submission
 if (isset($_POST['name']) && !empty($_POST['name'])) {
     $_SESSION['user'] = $_POST['name'];
+    //redirect to show cache hit
+    header("Location: /");
+    exit;
 }
 
 // Handle logout
 if (isset($_POST['logout'])) {
     unset($_SESSION['user']);
+    //redirect to show cache miss
+    header("Location: /");
+    exit;
 }
 
 // Get container ID
 $container_id = gethostname();
+
+//get session ID
+$session_id = session_id();
 
 // Set message
 $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please enter your name:';
@@ -45,7 +54,8 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
             border-radius: 5px;
             padding: 30px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-            min-width: 400px;
+            width: 400px;
+            max-width: 95%;
         }
         h3 {
             margin-top: 0;
@@ -61,7 +71,8 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
             border: 1px solid #ccc;
             border-radius: 3px;
         }
-        input[type="submit"] {
+        /*input type submit or button*/
+        input[type="submit"],input[type="button"] {
             background-color: #007bff;
             border: none;
             color: white;
@@ -70,18 +81,20 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
             border-radius: 3px;
             cursor: pointer;
         }
-        input[type="submit"]:hover {
+        input[type="submit"]:hover,input[type="button"]:hover {
             background-color: #0056b3;
         }
         .container-id {
             margin-top: 1rem;
             font-size: 0.8rem;
+            overflow: hidden;
         }
         .description {
             font-size: 0.9rem;
             text-align: justify;
             margin-bottom: 1rem;
             width: 380px;
+            max-width: 90%;
         }
     </style>
 </head>
@@ -99,13 +112,17 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
         </form>
         <?php else: ?>
         <form action="" method="post">
-            <input type="submit" name="refresh" value="Refresh">
+            <input type="button" name="refresh" value="Refresh" onclick="location.reload();">
             <input type="submit" name="logout" value="Logout">
         </form>
         <?php endif; ?>
         <div class="container-id">
-            <strong>Container ID:</strong> <?php echo $container_id; ?>
+            <strong>Container Hostname:</strong> <?php echo $container_id; ?>
         </div>
+        <div class="container-id">
+            <strong>Session ID:</strong> <?php echo $session_id; ?>
+        </div>
+       
     </div>
 </body>
 </html>

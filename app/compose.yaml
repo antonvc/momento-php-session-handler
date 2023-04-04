@@ -14,5 +14,6 @@ services:
       target: fpm
     environment:
       - MOMENTO_AUTH_TOKEN=${MOMENTO_AUTH_TOKEN}
+      - MONENTO_SESSION_CACHE_TTL=60
     network_mode: service:nginx
     
