@@ -1,13 +1,18 @@
 services:
   nginx:
-    build: ./nginx
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      target: nginx
     ports:
       - "8080:80"
-    volumes:
-      - ./php-fpm:/var/www/html
   php_fpm:
-    build: ./php-fpm
-    volumes:
-      - ./php-fpm:/var/www/html
+    build: .
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      target: fpm
+    environment:
+      - MOMENTO_AUTH_TOKEN=${MOMENTO_AUTH_TOKEN}
     network_mode: service:nginx
     

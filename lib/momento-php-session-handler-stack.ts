@@ -5,6 +5,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import * as path from 'path';
+import { env } from 'process';
 
 export class MomentoPhpSessionHandlerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -16,20 +17,24 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
 
     const cluster = new ecs.Cluster(this, "MomentoPhpSessionHandlerCluster", {
       vpc: vpc,
-      clusterName: "MomentoPhpSessionHandlerCluster",
+      clusterName: "MomentoPhpSessionHandler",
       enableFargateCapacityProviders: true,
     });
 
-     const taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDef', {
-      volumes: [
-        { name: "www" },
-      ]
-     });
+    const taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDef');
+
+    //use escape hatch to set runtime platform to fargate arm64
+    const cfnTaskDefinition = taskDefinition.node.defaultChild as ecs.CfnTaskDefinition;
+    cfnTaskDefinition.runtimePlatform = {
+      cpuArchitecture: 'ARM64',
+      operatingSystemFamily: 'LINUX'
+    };
 
     const nginxContainer = taskDefinition.addContainer('Nginx', {
       image: ecs.ContainerImage.fromDockerImageAsset(new DockerImageAsset(this, 'nginx', {
-        directory: path.join(__dirname, '../app/nginx'),
-        platform: cdk.aws_ecr_assets.Platform.LINUX_AMD64,
+        directory: path.join(__dirname, '../app'),
+        platform: cdk.aws_ecr_assets.Platform.LINUX_ARM64,
+        target: 'nginx',
       })),
       essential: true,
       portMappings: [
@@ -40,33 +45,29 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
         }
       ],
     });
-    nginxContainer.addMountPoints({
-      containerPath: "/var/www/html",
-      sourceVolume: "www",
-      readOnly: false
+
+    const phpFpmContainer = taskDefinition.addContainer('PhpFpm', {
+      image: ecs.ContainerImage.fromDockerImageAsset(new DockerImageAsset(this, 'PhpFpm', {
+        directory: path.join(__dirname, '../app'),
+        platform: cdk.aws_ecr_assets.Platform.LINUX_ARM64,
+        target: 'fpm',
+      })),
+      essential: true,
+      environment: {
+        //retrieve momento API key from the current environment
+        'MOMENTO_AUTH_TOKEN': env.MOMENTO_AUTH_TOKEN??'',
+        'MONENTO_SESSION_CACHE': env.MONENTO_SESSION_CACHE??'php-sessions',
+      }
     });
-
-    // const phpFpmContainer = taskDefinition.addContainer('PhpFpm', {
-    //   image: ecs.ContainerImage.fromDockerImageAsset(new DockerImageAsset(this, 'PhpFpm', {
-    //     directory: path.join(__dirname, '../app/php-fpm'),
-    //     platform: cdk.aws_ecr_assets.Platform.LINUX_ARM64,
-    //   })),
-    //   essential: true,
-
-    // });
-    // phpFpmContainer.addMountPoints({
-    //   containerPath: "/var/www/html",
-    //   sourceVolume: "www",
-    //   readOnly: false
-    // });
 
     // Create a load-balanced Fargate spot service and make it public
     new ecs_patterns.ApplicationLoadBalancedFargateService(this, "MomentoPhpSessionHandlerService", {
       cluster: cluster, // Required
-      cpu: 512, // Default is 256
-      desiredCount: 1, // Default is 1
+      desiredCount: 10, // Default is 1
+      circuitBreaker: {
+        rollback: true
+      },
       taskDefinition,
-      memoryLimitMiB: 2048, // Default is 512
       publicLoadBalancer: true, // Default is true
     });
   }
