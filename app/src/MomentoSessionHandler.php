@@ -21,7 +21,7 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
         $configuration = Laptop::latest(new StderrLoggerFactory());
         $this->itemDefaultTtlSeconds = getenv('MOMENTO_SESSION_TTL')?:300;
         $this->client = new CacheClient($configuration, $authProvider, $this->itemDefaultTtlSeconds);
-        $this->cacheName = getenv('MONENTO_SESSION_CACHE')?:"php-sessions";
+        $this->cacheName = getenv('MOMENTO_SESSION_CACHE')?:"php-sessions";
 
         //make sure system logger is going to stdout
         openlog("php", LOG_PID | LOG_PERROR, LOG_LOCAL0);
@@ -63,14 +63,15 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
             if (isset($data['expiry'])) {
                 $this->expiry = $data['expiry'];
                 $this->found = true;
-                syslog(LOG_DEBUG, "Reading session $sessionId:" . $data['data'] . " expiry: " . date("H:i:s",$this->expiry));
+                syslog(LOG_DEBUG, "Getting cache cacheName: $this->cacheName, key: $sessionId,  data: " . $data['data'] . " expiry: " . date("H:i:s",$this->expiry));
                 return $data['data'];
             }
-            syslog(LOG_DEBUG, "Reading session $sessionId: Unexpected data: " . $hitResponse->valueString());
+           
+            syslog(LOG_ERR, "Getting cache cacheName: $this->cacheName, key: $sessionId,  Unexpected data: " . $hitResponse->valueString());
             return '';
         } else {
             $this->found = false;
-             syslog(LOG_DEBUG, "Reading session $sessionId: not found");
+            syslog(LOG_DEBUG, "Getting cache cacheName: $this->cacheName, key: $sessionId - not found");
             return '';
         }
     }
@@ -84,11 +85,11 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
         }
         if (!empty($sessionData)) {
             $data = serialize(['data' => $sessionData, 'expiry' => time()+ $this->itemDefaultTtlSeconds]);
-            syslog(LOG_DEBUG, "Writing session $sessionId:".$data);
+            syslog(LOG_DEBUG, "Setting cache cacheName: $this->cacheName, key: $sessionId, ttl: $this->itemDefaultTtlSeconds, data:".$data);
             $response = $this->client->set($this->cacheName, $sessionId, $data, $this->itemDefaultTtlSeconds);
             //log error if any...
             if ($response->asError() !== null) {
-                syslog(LOG_ERR, "Error writing session $sessionId:".$response->asError()->message());
+                syslog(LOG_ERR, "Error set for key: $sessionId:".$response->asError()->message());
             }
             return $response->asSuccess() !== null;
         }

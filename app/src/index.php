@@ -120,7 +120,7 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
             <strong>Container Hostname:</strong> <?=$container_id?> <br />
             <strong>Session ID:</strong> <?=$session_id?>
             <p>
-                <code>momento cache get --key <?=$session_id?> --cache <?=getenv('MONENTO_SESSION_CACHE')?:"php-sessions"?></code>
+                <code>momento cache get --key <?=$session_id?> --cache <?=getenv('MOMENTO_SESSION_CACHE')?:"php-sessions"?></code>
             </p>
         </div>
        
