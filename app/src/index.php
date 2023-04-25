@@ -117,10 +117,11 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
         </form>
         <?php endif; ?>
         <div class="container-id">
-            <strong>Container Hostname:</strong> <?php echo $container_id; ?>
-        </div>
-        <div class="container-id">
-            <strong>Session ID:</strong> <?php echo $session_id; ?>
+            <strong>Container Hostname:</strong> <?=$container_id?> <br />
+            <strong>Session ID:</strong> <?=$session_id?>
+            <p>
+                <code>momento cache get --key <?=$session_id?> --cache <?=getenv('MONENTO_SESSION_CACHE')?:"php-sessions"?></code>
+            </p>
         </div>
        
     </div>

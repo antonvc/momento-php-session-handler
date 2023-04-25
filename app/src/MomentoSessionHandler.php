@@ -12,13 +12,14 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
     private $client;
     private $cacheName;
     private $itemDefaultTtlSeconds;
-    private $debug;
+    private $found=null;
+    private $expiry=null;
 
     public function __construct()
     {
         $authProvider = CredentialProvider::fromEnvironmentVariable("MOMENTO_AUTH_TOKEN");
         $configuration = Laptop::latest(new StderrLoggerFactory());
-        $this->itemDefaultTtlSeconds = getenv('MONENTO_SESSION_CACHE_TTL')?:300;
+        $this->itemDefaultTtlSeconds = getenv('MOMENTO_SESSION_TTL')?:300;
         $this->client = new CacheClient($configuration, $authProvider, $this->itemDefaultTtlSeconds);
         $this->cacheName = getenv('MONENTO_SESSION_CACHE')?:"php-sessions";
 
@@ -50,26 +51,48 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
 
     public function open($sessionSavePath, $sessionName) :bool
     {
-        syslog(LOG_DEBUG, "Opening session $sessionSavePath, $sessionName");
+        //syslog(LOG_DEBUG, "Opening session $sessionSavePath, $sessionName");
         return true;
     }
 
     public function read($sessionId): string
     {
-        syslog(LOG_DEBUG, "Reading session $sessionId");
         $response = $this->client->get($this->cacheName, $sessionId);
         if ($hitResponse = $response->asHit()) {
-            return $hitResponse->valueString();
+            $data = unserialize($hitResponse->valueString());
+            if (isset($data['expiry'])) {
+                $this->expiry = $data['expiry'];
+                $this->found = true;
+                syslog(LOG_DEBUG, "Reading session $sessionId:" . $data['data'] . " expiry: " . date("H:i:s",$this->expiry));
+                return $data['data'];
+            }
+            syslog(LOG_DEBUG, "Reading session $sessionId: Unexpected data: " . $hitResponse->valueString());
+            return '';
         } else {
+            $this->found = false;
+             syslog(LOG_DEBUG, "Reading session $sessionId: not found");
             return '';
         }
     }
 
     public function write($sessionId, $sessionData): bool
     {
-        syslog(LOG_DEBUG, "Writing session $sessionId");
-        $response = $this->client->set($this->cacheName, $sessionId, $sessionData, $this->itemDefaultTtlSeconds);
-        return $response->asSuccess() !== null;
+        if ($this->found === true && empty($sessionData)) {
+            syslog(LOG_DEBUG, "Deleting session $sessionId");
+            $response = $this->client->delete($this->cacheName, $sessionId);
+            return $response->asSuccess() !== null;
+        }
+        if (!empty($sessionData)) {
+            $data = serialize(['data' => $sessionData, 'expiry' => time()+ $this->itemDefaultTtlSeconds]);
+            syslog(LOG_DEBUG, "Writing session $sessionId:".$data);
+            $response = $this->client->set($this->cacheName, $sessionId, $data, $this->itemDefaultTtlSeconds);
+            //log error if any...
+            if ($response->asError() !== null) {
+                syslog(LOG_ERR, "Error writing session $sessionId:".$response->asError()->message());
+            }
+            return $response->asSuccess() !== null;
+        }
+        return true;
     }
 
     public function validateId($sessionId): bool
@@ -81,7 +104,12 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
 
     public function updateTimestamp($sessionId, $sessionData): bool
     {
-        syslog(LOG_DEBUG, "Updating session timestampo $sessionId");
+        //only update if session is over half way to expiry
+        if ($this->expiry !== null && $this->expiry - time() > $this->itemDefaultTtlSeconds/2) {
+            syslog(LOG_DEBUG, "Skipping session timestamp update $sessionId");
+            return true;
+        }
+        syslog(LOG_DEBUG, "Updating session timestamp $sessionId");
         return $this->write($sessionId, $sessionData);
     }
 }

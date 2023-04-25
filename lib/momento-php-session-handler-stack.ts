@@ -57,7 +57,7 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
         //retrieve momento API key from the current environment
         'MOMENTO_AUTH_TOKEN': env.MOMENTO_AUTH_TOKEN??'',
         'MONENTO_SESSION_CACHE': env.MONENTO_SESSION_CACHE??'php-sessions',
-        'MOMENTO_SESSION_TTL': '300',
+        'MOMENTO_SESSION_TTL': '120',
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: 'momento-php-fpm',
@@ -67,7 +67,7 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
     // Create a load-balanced Fargate spot service and make it public
     new ecs_patterns.ApplicationLoadBalancedFargateService(this, "MomentoPhpSessionHandlerService", {
       cluster: cluster, // Required
-      desiredCount: 10, // Default is 1
+      desiredCount: 3, // Default is 1
       circuitBreaker: {
         rollback: true
       },
