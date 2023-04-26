@@ -11,17 +11,11 @@ session_start();
 // Handle form submission
 if (isset($_POST['name']) && !empty($_POST['name'])) {
     $_SESSION['user'] = $_POST['name'];
-    //redirect to show cache hit
-    header("Location: /");
-    exit;
 }
 
 // Handle logout
 if (isset($_POST['logout'])) {
     unset($_SESSION['user']);
-    //redirect to show cache miss
-    header("Location: /");
-    exit;
 }
 
 // Get container ID
@@ -112,7 +106,7 @@ $message = isset($_SESSION['user']) ? "Welcome " . $_SESSION['user'] : 'Please e
         </form>
         <?php else: ?>
         <form action="" method="post">
-            <input type="button" name="refresh" value="Refresh" onclick="location.reload();">
+            <input type="button" name="refresh" value="Refresh" onclick="window.location.replace('/');">
             <input type="submit" name="logout" value="Logout">
         </form>
         <?php endif; ?>
