@@ -105,12 +105,13 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
 
     public function updateTimestamp($sessionId, $sessionData): bool
     {
-        //only update if session is over half way to expiry
-        if ($this->expiry !== null && $this->expiry - time() > $this->itemDefaultTtlSeconds/2) {
-            syslog(LOG_DEBUG, "Skipping session timestamp update $sessionId");
-            return true;
-        }
-        syslog(LOG_DEBUG, "Updating session timestamp $sessionId");
-        return $this->write($sessionId, $sessionData);
+        // //only update if session is over half way to expiry
+        // if ($this->expiry !== null && $this->expiry - time() > $this->itemDefaultTtlSeconds/2) {
+        //     syslog(LOG_DEBUG, "Skipping session timestamp update $sessionId");
+        //     return true;
+        // }
+        // syslog(LOG_DEBUG, "Updating session timestamp $sessionId");
+        // return $this->write($sessionId, $sessionData);
+        return true;
     }
 }

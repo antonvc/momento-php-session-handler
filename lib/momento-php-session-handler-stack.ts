@@ -57,7 +57,7 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
         //retrieve momento API key from the current environment
         'MOMENTO_AUTH_TOKEN': env.MOMENTO_AUTH_TOKEN??'',
         'MOMENTO_SESSION_CACHE': env.MONENTO_SESSION_CACHE??'php-sessions',
-        'MOMENTO_SESSION_TTL': '120',
+        'MOMENTO_SESSION_TTL': '3600',
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: 'momento-php-fpm',
