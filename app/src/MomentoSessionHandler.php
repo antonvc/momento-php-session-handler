@@ -6,7 +6,6 @@ use Momento\Cache\CacheClient;
 use Momento\Config\Configurations\Laptop;
 use Momento\Logging\StderrLoggerFactory;
 
-
 class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface
 {
     private $client;
@@ -52,6 +51,7 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
     public function open($sessionSavePath, $sessionName) :bool
     {
         //syslog(LOG_DEBUG, "Opening session $sessionSavePath, $sessionName");
+        $this->sessionName = $sessionName;
         return true;
     }
 
@@ -69,9 +69,14 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
            
             syslog(LOG_ERR, "Getting cache cacheName: $this->cacheName, key: $sessionId,  Unexpected data: " . $hitResponse->valueString());
             return '';
+        } elseif ($response->asError()) {
+            $this->found = false;
+            syslog(LOG_ERR, "Error reading cache, cacheName: $this->cacheName, key: $sessionId: " . $response->asError()->message());
+            return '';
         } else {
             $this->found = false;
             syslog(LOG_DEBUG, "Getting cache cacheName: $this->cacheName, key: $sessionId - not found");
+
             return '';
         }
     }

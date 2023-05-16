@@ -6,6 +6,7 @@ import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import * as path from 'path';
 import { env } from 'process';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 export class MomentoPhpSessionHandlerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -15,6 +16,7 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
       maxAzs: 2 // Default is all AZs in region
     });
 
+   
     const cluster = new ecs.Cluster(this, "MomentoPhpSessionHandlerCluster", {
       vpc: vpc,
       clusterName: "MomentoPhpSessionHandler",
@@ -29,6 +31,12 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
       },
       
     });
+
+    //add permissions to the task definition to allow it to retrieve the momento API key from the parameter store
+    taskDefinition.addToTaskRolePolicy(new cdk.aws_iam.PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: ['arn:aws:ssm:*:*:parameter/momento/auth-token']
+    }));
 
     const nginxContainer = taskDefinition.addContainer('Nginx', {
       image: ecs.ContainerImage.fromDockerImageAsset(new DockerImageAsset(this, 'nginx', {
@@ -46,6 +54,7 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
       ]
     });
 
+
     const phpFpmContainer = taskDefinition.addContainer('PhpFpm', {
       image: ecs.ContainerImage.fromDockerImageAsset(new DockerImageAsset(this, 'PhpFpm', {
         directory: path.join(__dirname, '../app'),
@@ -54,17 +63,20 @@ export class MomentoPhpSessionHandlerStack extends cdk.Stack {
       })),
       essential: true,
       environment: {
-        //retrieve momento API key from the current environment
-        'MOMENTO_AUTH_TOKEN': env.MOMENTO_AUTH_TOKEN??'',
         'MOMENTO_SESSION_CACHE': env.MONENTO_SESSION_CACHE??'php-sessions',
         'MOMENTO_SESSION_TTL': '3600',
+      },
+      secrets: {
+        //retrieve momento API key from the parameter store /momento/auth-token
+        'MOMENTO_AUTH_TOKEN': ecs.Secret.fromSsmParameter(StringParameter.fromStringParameterName(this, 'momento_authtoken', '/momento/auth-token'))
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: 'momento-php-fpm',
       }),
     });
 
-    // Create a load-balanced Fargate spot service and make it public
+
+    // Create a load-balanced Fargate service and make it public
     new ecs_patterns.ApplicationLoadBalancedFargateService(this, "MomentoPhpSessionHandlerService", {
       cluster: cluster, // Required
       desiredCount: 3, // Default is 1
