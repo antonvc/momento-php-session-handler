@@ -50,8 +50,6 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
 
     public function open($sessionSavePath, $sessionName) :bool
     {
-        //syslog(LOG_DEBUG, "Opening session $sessionSavePath, $sessionName");
-        $this->sessionName = $sessionName;
         return true;
     }
 
@@ -73,7 +71,12 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
             $this->found = false;
             syslog(LOG_ERR, "Error reading cache, cacheName: $this->cacheName, key: $sessionId: " . $response->asError()->message());
             return '';
-        } else {
+        } elseif ($response->asMiss()) {
+            $this->found = false;
+            syslog(LOG_ERR, "reading cache, Miss, cacheName: $this->cacheName, key: $sessionId");
+            return '';
+        }
+        else {
             $this->found = false;
             syslog(LOG_DEBUG, "Getting cache cacheName: $this->cacheName, key: $sessionId - not found");
 
