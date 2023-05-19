@@ -118,11 +118,12 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
      * Garbage collection is not needed as Momento handles it automatically based on TTL.
      *
      * @param int $maximumLifetime Maximum session lifetime (not used).
-     * @return int|bool Always returns true.
+     * @return int|false `returns how many sessions were removed`.
      */
-    public function gc($maximumLifetime): int|bool
+    public function gc($maximumLifetime): int|false
     {
-        return true;
+        //returns how many sessions were removed - always 0 since it's not used
+        return 0;
     }
 
     /**
