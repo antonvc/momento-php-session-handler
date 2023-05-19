@@ -200,6 +200,8 @@ class MomentoSessionHandler implements SessionHandlerInterface, SessionUpdateTim
             // Return the status of the write operation
             return $response->asSuccess() !== null;
         }
+        // Return true if the session data is empty (and the key was not found)
+        return true;
     }
 
     /**
